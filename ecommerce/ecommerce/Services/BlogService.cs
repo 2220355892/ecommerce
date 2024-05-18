@@ -83,12 +83,11 @@ namespace ecommerce.Services
                 image = imagePath.Data;
             }
 
-            var existingBlog = await _context.Blogs.Include(x=>x.Details).FirstOrDefaultAsync(x => x.BlogId == id);
+            var existingBlog = await _context.Blogs.Include(x=>x.Details).Include(x => x.Categories).FirstOrDefaultAsync(x => x.BlogId == id);
             if(!string.IsNullOrEmpty(existingBlog.Image) && image != existingBlog.Image)
             {
                  await _uploadFilesService.RemoveFileAsync(existingBlog.Image, Contains.BlogImageFolder);
             }
-           
             if (existingBlog != null)
             {
                 existingBlog.Title = blog.Title;
@@ -101,6 +100,14 @@ namespace ecommerce.Services
                 existingBlog.Details.UpdatedAt = DateTime.Now;
                 existingBlog.Image = string.IsNullOrEmpty(image) ? existingBlog.Image : image;
                 // remove image when the image is updated
+                var newCategories = await _context.BlogCategories.Where(c => blog.CategoryIds.Contains(c.CategoryId)).ToListAsync();
+                existingBlog.Categories.Clear();
+                foreach (var category in newCategories)
+                {
+                    existingBlog.Categories.Add(category);
+                }
+             
+               
                 await _unitOfWork.SaveChangesAsync();
 
                 return new ApiResponse<bool> { Data = true, Status = true };
